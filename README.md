@@ -50,9 +50,9 @@ Baris-baris di atas masih sama dengan sebelumnya, tetapi sekarang ada baris-bari
 ![Commit 3 screen capture](assets/images/commit3.png)
 Berikut adalah hasil tangkapan layar untuk *commit* ke-3.
 
-Berdasarkan isi dari fungsi `handle_connection()` sekarang, cara membedakan antara *response* adalah dengan melihat 
+Jika dilihat dari fungsi `handle_connection()` sekarang, kita sedang membedakan antara *response* dengan melihat baris pertama dari *request*, yaitu *request line*, untuk memastikan bahwa *request* yang diterima adalah *request* GET ke endpoint `/`. Jika terdapat *request* lain, misalnya *request* POST atau *request* GET tapi ke *endpoint* lain, *request line* akan berbeda sehingga akan masuk ke *else block*.
 
-Kemudian, untuk alasan mengapa *refactoring* perlu dilakukan, kita dapat melihat perbedaan antara kode lama dan kode baru.
+Kemudian, untuk alasan mengapa *refactoring* perlu dilakukan, kita dapat melihat perbedaan antara kode lama dan kode baru:
 
 **Kode sebelum *refactoring***
 ```rs
@@ -95,3 +95,18 @@ let response =
 
 stream.write_all(response.as_bytes()).unwrap();
 ```
+Dapat dilihat bahwa pada kode yang baru, perbedaan antara kedua cabang lebih jelas dengan melakukan ekstraksi variabel `status_line` dan `filename` yang didefinisikan secara *inline*. Selain itu, kode sudah lebih dipadatkan karena duplikasi kode sudah dihilangkan sehingga ke depannya perubahan hanya perlu dilakukan pada kedua variabel tersebut jika ingin mengubah alur jalannya program; sisanya tidak perlu diubah, seperti variabel `contents`, `length`, dan `response`.
+
+## Commit 4 Reflection Notes
+Jika diperhatikan fungsi `handle_connection()` yang baru:
+```rs
+let (status_line, filename) = match &request_line[..] {
+    "GET / HTTP/1.1" => ("HTTP/1.1 200 OK", "hello.html"),
+    "GET /sleep HTTP/1.1" => {
+        thread::sleep(Duration::from_secs(10));
+        ("HTTP/1.1 200 OK", "hello.html")
+    }
+    _ => ("HTTP/1.1 404 NOT FOUND", "404.html"),
+};
+```
+Endpoint `/sleep` akan membuat *thread* "tidur" selama 10 detik. Ini mensimulasikan *thread* yang sedang sibuk mengerjakan suatu *request*. Jika ternyata ada pengguna lain yang ingin mengakses aplikasi web kita, mereka terpaksa menunggu karena server kita hanya menggunakan satu *thread* sehingga jika *thread* tersebut sedang sibuk, semua *request* lain tidak dapat dilayani dan harus menunggu sampai *thread* tersebut selesai memproses *request*-nya.
