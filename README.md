@@ -110,3 +110,8 @@ let (status_line, filename) = match &request_line[..] {
 };
 ```
 Endpoint `/sleep` akan membuat *thread* "tidur" selama 10 detik. Ini mensimulasikan *thread* yang sedang sibuk mengerjakan suatu *request*. Jika ternyata ada pengguna lain yang ingin mengakses aplikasi web kita, mereka terpaksa menunggu karena server kita hanya menggunakan satu *thread* sehingga jika *thread* tersebut sedang sibuk, semua *request* lain tidak dapat dilayani dan harus menunggu sampai *thread* tersebut selesai memproses *request*-nya.
+
+## Commit 5 Reflection Notes
+Pertama, `ThreadPool` akan dibuat dengan method `new()` dan membuat sebuah *sender* dan *receiver* yang akan digunakan untuk komunikasi dengan *thread*. Kemudian, ThreadPool akan push `Worker` baru sebanyak `size` ke dalam `Vector`. Setiap `Worker` akan looping terus dan menunggu sampai mendapatkan `Job`.
+
+Ketika ada request baru yang datang ke server kita, `main.rs` akan menjalankan `pool.execute()`, di mana `ThreadPool` akan mengirim sebuah `Job` baru yang berisi fungsi yang ingin dijalankan (`handle_connection()`). Salah satu `Worker` kemudian akan mendapatkan `Job` tersebut lewat *channel* komunikasi asinkronus (menggunakan *mutex lock* agar hanya satu *thread* yang dapat mengakses dan mengambilnya), dan akan mengeksekusi fungsi yang terkandung. Setelah *thread* selesai menjalankannya, *thread* akan kembali me-loop dan menunggu untuk `Job` baru dari `ThreadPool`.
