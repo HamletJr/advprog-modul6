@@ -45,3 +45,53 @@ fn handle_connection(mut stream: TcpStream) {
 }
 ```
 Baris-baris di atas masih sama dengan sebelumnya, tetapi sekarang ada baris-baris baru di bawah. Yang pertama, kita membaut variabel baru yaitu `status_line` yang berisi baris *status* untuk response HTTP. Kemudian, terdapat `contents`, yaitu variabel yang berisi isi dari response HTTP kita, yaitu file `hello.html`. File tersebut akan di-*parse* ke *string* menggunakan `fs::read_to_string()` dan di-*unwrap* lagi. Terakhir, panjang dari *string* tersebut akan dihitung dan disimpan dalam `length`. Ini akan berguna nanti untuk baris terakhir, yaitu `response`, yaitu HTTP response kita. Kita menggunakan *macro* `format!()` dan menaruh variabel `status_line` untuk *status response* HTTP kita, kemudian informasi `Content-Length` diisi dengan `length`, yaitu panjang dari *string* yang menjadi isi *response* kita, dan terakhir kita memasukkan isi *response* kita, yaitu *file* HTML yang sudah diubah menjadi *string*. *Response* ini akan ditulis ke `TcpStream` dan akhirnya diterima oleh *browser* kita.
+
+## Commit 3 Reflection Notes
+![Commit 3 screen capture](assets/images/commit3.png)
+Berikut adalah hasil tangkapan layar untuk *commit* ke-3.
+
+Berdasarkan isi dari fungsi `handle_connection()` sekarang, cara membedakan antara *response* adalah dengan melihat 
+
+Kemudian, untuk alasan mengapa *refactoring* perlu dilakukan, kita dapat melihat perbedaan antara kode lama dan kode baru.
+
+**Kode sebelum *refactoring***
+```rs
+if request_line == "GET / HTTP/1.1" {
+    let status_line = "HTTP/1.1 200 OK";
+    let contents = fs::read_to_string("hello.html").unwrap();
+    let length = contents.len();
+
+    let response = format!(
+        "{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}"
+    );
+
+    stream.write_all(response.as_bytes()).unwrap();
+} else {
+    let status_line = "HTTP/1.1 404 NOT FOUND";
+    let contents = fs::read_to_string("404.html").unwrap();
+    let length = contents.len();
+
+    let response = format!(
+        "{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}"
+    );
+
+    stream.write_all(response.as_bytes()).unwrap();
+}
+```
+
+**Kode setelah *refactoring***
+```rs
+let (status_line, filename) = if request_line == "GET / HTTP/1.1" {
+    ("HTTP/1.1 200 OK", "hello.html")
+} else {
+    ("HTTP/1.1 404 NOT FOUND", "404.html")
+};
+
+let contents = fs::read_to_string(filename).unwrap();
+let length = contents.len();
+
+let response =
+    format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
+
+stream.write_all(response.as_bytes()).unwrap();
+```
