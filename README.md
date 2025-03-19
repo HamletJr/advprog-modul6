@@ -115,3 +115,28 @@ Endpoint `/sleep` akan membuat *thread* "tidur" selama 10 detik. Ini mensimulasi
 Pertama, `ThreadPool` akan dibuat dengan method `new()` dan membuat sebuah *sender* dan *receiver* yang akan digunakan untuk komunikasi dengan *thread*. Kemudian, ThreadPool akan push `Worker` baru sebanyak `size` ke dalam `Vector`. Setiap `Worker` akan looping terus dan menunggu sampai mendapatkan `Job`.
 
 Ketika ada request baru yang datang ke server kita, `main.rs` akan menjalankan `pool.execute()`, di mana `ThreadPool` akan mengirim sebuah `Job` baru yang berisi fungsi yang ingin dijalankan (`handle_connection()`). Salah satu `Worker` kemudian akan mendapatkan `Job` tersebut lewat *channel* komunikasi asinkronus (menggunakan *mutex lock* agar hanya satu *thread* yang dapat mengakses dan mengambilnya), dan akan mengeksekusi fungsi yang terkandung. Setelah *thread* selesai menjalankannya, *thread* akan kembali me-loop dan menunggu untuk `Job` baru dari `ThreadPool`.
+
+## Commit Bonus Reflection Notes
+Untuk mengimplementasikan fungsi `build()`, saya menggunakan kode berikut:
+```rs
+pub fn build(size: usize) -> Result<ThreadPool, PoolCreationError> {
+    if size <= 0 {
+        return Err(PoolCreationError::InvalidSize);
+    }
+
+    let (sender, receiver) = mpsc::channel();
+
+    let receiver = Arc::new(Mutex::new(receiver));
+
+    let mut workers = Vec::with_capacity(size);
+
+    for id in 0..size {
+        workers.push(Worker::new(id, Arc::clone(&receiver)));
+    }
+
+    Ok(ThreadPool { workers, sender })
+}
+```
+Alur jalannya hampir sama dengan fungsi `new()` yang digunakan sebelumnya, namun alur *error handling*-nya mengalami perubahan. Fungsi `new()` menggunakan `assert!()` untuk memastikan bahwa `size` berisi nilai yang valid (angka positif). Jika hasil `assert!()` bernilai false, program akan *panic* dan langsung menghentikan eksekusi (seperti *exception* dalam Java). 
+
+Namun, dalam implementasi `build()`, program akan mengembalikan suatu `Result` yang dapat berisi nilai `Ok` atau `Err`. Fungsi `build()` akan menggunakan *if statement* untuk memeriksa nilai `size`; jika valid, eksekusi akan berjalan seperti biasa dan fungsi `build()` akan mengembalikan `Result` yang berisi nilai `Ok` dan mengandung *return value* yang sama dengan *return value* fungsi `new()`. Akan tetapi, jika invalid, fungsi `build()` akan mengembalikan `Result` yang berisi `Err` dan mengandung `PoolCreationError` dengan nilai `InvalidSize`. Ini memungkinkan *caller*/pemanggil fungsi untuk menangani *error* yang terjadi tanpa menghentikan eksekusi program.
